@@ -30,15 +30,10 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
   Map<Double, MediaPlayer> playerPool = new HashMap<>();
   ReactApplicationContext context;
   final static Object NULL = null;
-  String category;
-  Boolean mixWithOthers = true;
-  Double focusedPlayerKey;
-  Boolean wasPlayingBeforeFocusChange = false;
 
   public RNSoundModule(ReactApplicationContext context) {
     super(context);
     this.context = context;
-    this.category = null;
   }
 
   private void setOnPlay(boolean isPlaying, final Double playerKey) {
@@ -69,33 +64,6 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     this.playerPool.put(key, player);
 
     final RNSoundModule module = this;
-
-    if (module.category != null) {
-      Integer category = null;
-      switch (module.category) {
-        case "Playback":
-          category = AudioManager.STREAM_MUSIC;
-          break;
-        case "Ambient":
-          category = AudioManager.STREAM_NOTIFICATION;
-          break;
-        case "System":
-          category = AudioManager.STREAM_SYSTEM;
-          break;
-        case "Voice":
-          category = AudioManager.STREAM_VOICE_CALL;
-          break;
-        case "Ring":
-          category = AudioManager.STREAM_RING;
-          break;
-        default:
-          Log.e("RNSoundModule", String.format("Unrecognised category %s", module.category));
-          break;
-      }
-      if (category != null) {
-        player.setAudioStreamType(category);
-      }
-    }
 
     player.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
       boolean callbackWasCalled = false;
@@ -152,20 +120,11 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
 
   protected MediaPlayer createMediaPlayer(final String fileName) {
     int res = this.context.getResources().getIdentifier(fileName, "raw", this.context.getPackageName());
-    MediaPlayer mediaPlayer = new MediaPlayer();
     if (res != 0) {
-      try {
-        AssetFileDescriptor afd = context.getResources().openRawResourceFd(res);
-        mediaPlayer.setDataSource(afd.getFileDescriptor(), afd.getStartOffset(), afd.getLength());
-        afd.close();
-      } catch (IOException e) {
-        Log.e("RNSoundModule", "Exception", e);
-        return null;
-      }
-      return mediaPlayer;
+      return MediaPlayer.create(this.context, res);
     }
-
-    if (fileName.startsWith("http://") || fileName.startsWith("https://")) {
+    if(fileName.startsWith("http://") || fileName.startsWith("https://")) {
+      MediaPlayer mediaPlayer = new MediaPlayer();
       mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
       Log.i("RNSoundModule", fileName);
       try {
@@ -180,6 +139,7 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
     if (fileName.startsWith("asset:/")){
         try {
             AssetFileDescriptor descriptor = this.context.getAssets().openFd(fileName.replace("asset:/", ""));
+            MediaPlayer mediaPlayer = new MediaPlayer();
             mediaPlayer.setDataSource(descriptor.getFileDescriptor(), descriptor.getStartOffset(), descriptor.getLength());
             descriptor.close();
             return mediaPlayer;
@@ -414,34 +374,6 @@ public class RNSoundModule extends ReactContextBaseJavaModule implements AudioMa
         audioManager.setMode(AudioManager.MODE_NORMAL);
       }
       audioManager.setSpeakerphoneOn(speaker);
-    }
-  }
-
-  @ReactMethod
-  public void setCategory(final String category, final Boolean mixWithOthers) {
-    this.category = category;
-    this.mixWithOthers = mixWithOthers;
-  }
-
-  @Override
-  public void onAudioFocusChange(int focusChange) {
-    if (!this.mixWithOthers) {
-      MediaPlayer player = this.playerPool.get(this.focusedPlayerKey);
-
-      if (player != null) {
-        if (focusChange <= 0) {
-            this.wasPlayingBeforeFocusChange = player.isPlaying();
-
-            if (this.wasPlayingBeforeFocusChange) {
-              this.pause(this.focusedPlayerKey, null);
-            }
-        } else {
-            if (this.wasPlayingBeforeFocusChange) {
-              this.play(this.focusedPlayerKey, null);
-              this.wasPlayingBeforeFocusChange = false;
-            }
-        }
-      }
     }
   }
 

@@ -7,15 +7,7 @@ type AVAudioSessionCategory = 'Ambient' | 'SoloAmbient' | 'Playback' | 'Record' 
 
 type AVAudioSessionMode = 'Default' | 'VoiceChat' | 'VideoChat' | 'GameChat' | 'VideoRecording' | 'Measurement' | 'MoviePlayback' | 'SpokenAudio'
 
-type FilenameType = string
-
-type FileType = any
-
-type BasePathType = string
-
-type CallbackType = (error: any) => void
-
-declare class Sound {
+export default class Sound {
   static MAIN_BUNDLE: string
   static DOCUMENT: string
   static LIBRARY: string
@@ -95,11 +87,6 @@ declare class Sound {
    * (1 for mono and 2 for stereo sound), or -1 before the sound gets loaded.
    */
   getNumberOfChannels(): number
-
-  /**
-   * Return the time of audio (second)
-   */
-  getDuration(): number
 
   /**
    * Return the volume of the audio player (not the system-wide volume),
@@ -182,5 +169,3 @@ declare class Sound {
    */
   isPlaying(): boolean
 }
-
-export = Sound;
