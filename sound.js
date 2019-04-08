@@ -13,6 +13,24 @@ function isRelativePath(path) {
   return !/^(\/|http(s?)|asset|file)/.test(path);
 }
 
+function calculateRelativeVolume(volume, pan) {
+  const relativeVolume = (volume * (1 - Math.abs(pan)));
+  return Number(relativeVolume.toFixed(1));
+}
+
+function setAndroidVolumes(sound) {
+  if (sound._pan) {
+    const relativeVolume = calculateRelativeVolume(sound._volume, sound._pan);
+    if (sound._pan < 0) {
+      RNSound.setVolume(sound._key, sound._volume, relativeVolume);
+    } else {
+      RNSound.setVolume(sound._key, relativeVolume, sound._volume);
+    }
+  } else {
+    RNSound.setVolume(sound._key, sound._volume, sound._volume);
+  }
+}
+
 function Sound(filename, basePath, onError, options) {
   var asset = resolveAssetSource(filename);
   if (asset) {
@@ -174,24 +192,14 @@ Sound.prototype.getPan = function() {
 };
 
 Sound.prototype.setPan = function(value) {
+  this._pan = value;
   if (this._loaded) {
-    if (IsAndroid || IsWindows) {
-      var right = this.getVolume();
-      var left = this.getVolume();
-
-      if (value === -1) {
-          left = 0;
-          this._pan = -1;
-      } else if (value === 1) {
-          right = 0;
-          this._pan = 1;
-      } else if (value === 0) {
-        this._pan = 0;
-      }
-
-      RNSound.setVolume(this._key, left, right);
+    if (IsWindows) {
+      throw new Error('#setPan not supported on windows');
+    } else if (IsAndroid) {
+      setAndroidVolumes(this)
     } else {
-      RNSound.setPan(this._key, this._pan = value);
+      RNSound.setPan(this._key, value);
     }
   }
   return this;
