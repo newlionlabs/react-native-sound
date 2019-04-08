@@ -43,11 +43,10 @@
 
 -(void) audioPlayerDidFinishPlaying:(AVAudioPlayer*)player
                        successfully:(BOOL)flag {
-  @synchronized(self) {
-    NSNumber* key = [self keyForPlayer:player];
-    if (key == nil) return;
+  NSNumber* key = [self keyForPlayer:player];
+  if (key == nil) return;
 
-    [self setOnPlay:NO forPlayerKey:key];
+  @synchronized(key) {
     RCTResponseSenderBlock callback = [self callbackForKey:key];
     if (callback) {
       callback(@[@(flag)]);
@@ -57,11 +56,6 @@
 }
 
 RCT_EXPORT_MODULE();
-
--(NSArray<NSString *> *)supportedEvents
-  {
-    return @[@"onPlayChange"];
-  }
 
 -(NSDictionary *)constantsToExport {
   return @{@"IsAndroid": [NSNumber numberWithBool:NO],
@@ -159,7 +153,7 @@ RCT_EXPORT_METHOD(prepare:(NSString*)fileName
   AVAudioPlayer* player;
 
   if ([fileName hasPrefix:@"http"]) {
-    fileNameUrl = [NSURL URLWithString:fileName];
+    fileNameUrl = [NSURL URLWithString:[fileName stringByRemovingPercentEncoding]];
     NSData* data = [NSData dataWithContentsOfURL:fileNameUrl];
     player = [[AVAudioPlayer alloc] initWithData:data error:&error];
   }
@@ -168,21 +162,19 @@ RCT_EXPORT_METHOD(prepare:(NSString*)fileName
     player = [[AVAudioPlayer alloc] initWithContentsOfURL:fileNameUrl error:&error];
   }
   else {
-    fileNameUrl = [NSURL URLWithString: fileName];
+    fileNameUrl = [NSURL fileURLWithPath:[fileName stringByRemovingPercentEncoding]];
     player = [[AVAudioPlayer alloc]
               initWithContentsOfURL:fileNameUrl
               error:&error];
   }
 
   if (player) {
-    @synchronized(self) {
-      player.delegate = self;
-      player.enableRate = YES;
-      [player prepareToPlay];
-      [[self playerPool] setObject:player forKey:key];
-      callback(@[[NSNull null], @{@"duration": @(player.duration),
-                                  @"numberOfChannels": @(player.numberOfChannels)}]);
-    }
+    player.delegate = self;
+    player.enableRate = YES;
+    [player prepareToPlay];
+    [[self playerPool] setObject:player forKey:key];
+    callback(@[[NSNull null], @{@"duration": @(player.duration),
+                                @"numberOfChannels": @(player.numberOfChannels)}]);
   } else {
     callback(@[RCTJSErrorFromNSError(error)]);
   }
@@ -193,7 +185,6 @@ RCT_EXPORT_METHOD(play:(nonnull NSNumber*)key withCallback:(RCTResponseSenderBlo
   if (player) {
     [[self callbackPool] setObject:[callback copy] forKey:key];
     [player play];
-    [self setOnPlay:YES forPlayerKey:key];
   }
 }
 
@@ -228,11 +219,6 @@ RCT_EXPORT_METHOD(setVolume:(nonnull NSNumber*)key withValue:(nonnull NSNumber*)
   if (player) {
     player.volume = [value floatValue];
   }
-}
-
-RCT_EXPORT_METHOD(getSystemVolume:(RCTResponseSenderBlock)callback) {
-  AVAudioSession* session = [AVAudioSession sharedInstance];
-  callback(@[@(session.outputVolume)]);
 }
 
 RCT_EXPORT_METHOD(setPan:(nonnull NSNumber*)key withValue:(nonnull NSNumber*)value) {
@@ -274,21 +260,4 @@ RCT_EXPORT_METHOD(getCurrentTime:(nonnull NSNumber*)key
   }
 }
 
-RCT_EXPORT_METHOD(setSpeakerPhone:(BOOL) on) {
-    AVAudioSession *session = [AVAudioSession sharedInstance];
-    if (on) {
-        [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker error:nil];
-    } else {
-        [session overrideOutputAudioPort:AVAudioSessionPortOverrideNone error:nil];
-    }
-    [session setActive:true error:nil];
-}
-
-+ (BOOL)requiresMainQueueSetup
-{
-    return YES;
-}
-- (void)setOnPlay:(BOOL)isPlaying forPlayerKey:(nonnull NSNumber*)playerKey {
-  [self sendEventWithName:@"onPlayChange" body:@{@"isPlaying": isPlaying ? @YES : @NO, @"playerKey": playerKey}];
-}
 @end

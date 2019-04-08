@@ -43,11 +43,11 @@ export default class Sound {
   static setMode(mode: AVAudioSessionMode): void
 
   /**
-   * @param filenameOrFile Either absolute or relative path to the sound file or the `require` call.
-   * @param basePathOrCallback Optional base path of the file. Omit this or pass '' if filename is an absolute path; you may use one of the predefined directories: Sound.MAIN_BUNDLE, Sound.DOCUMENT, Sound.LIBRARY, Sound.CACHES. If you are using `require` to define filepath, then set the callback function as the second argument.
-   * @param callback Optional callback function called when load ends in either success or error. In the event of success, error is undefined.
+   * @param filename Either absolute or relative path to the sound file
+   * @param basePath Optional base path of the file. Omit this or pass '' if filename is an absolute path. Otherwise, you may use one of the predefined directories: Sound.MAIN_BUNDLE, Sound.DOCUMENT, Sound.LIBRARY, Sound.CACHES.
+   * @param onError Optional callback function if loading file failed
    */
-  constructor(filenameOrFile: FilenameType | FileType, basePathOrCallback?: BasePathType | CallbackType, callback?: CallbackType)
+  constructor(filename: string, basePath: string, onError: (error: any) => void)
 
   /**
    * Return true if the sound has been loaded.
@@ -58,7 +58,7 @@ export default class Sound {
    * Plays the loaded file
    * @param onEnd - Optional callback function that gets called when the playback finishes successfully or an audio decoding error interrupts it
    */
-  play(onEnd?: (success: boolean) => void): void
+  play(onEnd?: () => void): void
 
   /**
    * Pause the sound
@@ -163,9 +163,4 @@ export default class Sound {
    * @param value
    */
   setSpeakerphoneOn(value: boolean): void
-
-  /**
-   * Whether the player is playing or not.
-   */
-  isPlaying(): boolean
 }
